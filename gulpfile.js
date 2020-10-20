@@ -63,7 +63,7 @@ function optimize(options) {
 		.pipe(requirejsOptimize(options));
 }
 
-gulp.task('scripts', ['create-main-js', 'shaders'], function() {
+gulp.task('scripts', gulp.series('create-main-js', 'shaders', function() {
 	var copyright = getCopyrightHeaders();
 
 	var requirejsOptions = {
@@ -107,9 +107,8 @@ gulp.task('scripts', ['create-main-js', 'shaders'], function() {
 
 	var minified = optimize(minifiedOptions);
 
-	return es.merge(unminified, minified)
-		.pipe(gulp.dest('dist'));
-});
+	return es.merge(unminified, minified).pipe(gulp.dest('dist'));
+}));
 
 gulp.task('clean', del.bind(null, ['coverage', '.tmp', 'dist']));
 
@@ -128,18 +127,18 @@ function test(done, options) {
 	server.start();
 }
 
-gulp.task('test', ['test-lint'], function(done) {
+gulp.task('test', gulp.series('test-lint', function(done) {
 	test(done);
-});
+}));
 
-gulp.task('test-ci', ['test-lint'], function(done) {
+gulp.task('test-ci', gulp.series('test-lint', function(done) {
 	test(done, {
 		browsers: ['Electron'],
 		client: {
 			args: [true]
 		}
 	});
-});
+}));
 
 gulp.task('serve', function(done) {
 	runSequence('build', 'run', 'watch', done);
@@ -157,12 +156,14 @@ gulp.task('watch', function() {
 	gulp.watch(['lib/**/*.js'], ['build-reload']);
 });
 
-gulp.task('build-reload', ['build'], reload);
 
-gulp.task('build', ['lint', 'scripts'], function() {
+
+gulp.task('build', gulp.series('lint', 'scripts', function() {
 	return gulp.src('dist/**/*')
 		.pipe(size({ title: 'build', gzip: true }));
-});
+}));
+
+gulp.task('build-reload', gulp.series('build', reload));
 
 gulp.task('ci', function(done) {
 	runSequence('lint', 'test-ci', 'build', done);
